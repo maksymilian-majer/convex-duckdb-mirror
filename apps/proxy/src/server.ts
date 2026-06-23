@@ -1,12 +1,12 @@
 import { buildProxyServer } from "./app.js";
 import { loadProxyConfig } from "./config.js";
 import { assertBigIntJsonRuntime } from "./convexJson.js";
-import { openExistingDeltasStore } from "./store.js";
+import { openDeltasStore } from "./store.js";
 
 assertBigIntJsonRuntime();
 
 const config = loadProxyConfig();
-const store = openExistingDeltasStore(config.dataDir);
+const store = openDeltasStore(config.dataDir);
 
 const app = buildProxyServer({
   store,

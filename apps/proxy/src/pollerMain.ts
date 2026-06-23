@@ -2,12 +2,12 @@ import pino from "pino";
 import { loadProxyConfig } from "./config.js";
 import { assertBigIntJsonRuntime } from "./convexJson.js";
 import { startDeltaPollSchedule } from "./poller.js";
-import { openExistingDeltasStore } from "./store.js";
+import { openDeltasStore } from "./store.js";
 
 assertBigIntJsonRuntime();
 
 const config = loadProxyConfig();
-const store = openExistingDeltasStore(config.dataDir);
+const store = openDeltasStore(config.dataDir);
 const log = pino({
   level: process.env.LOG_LEVEL ?? "info",
   base: { service: "convex-duckdb-poller" },
