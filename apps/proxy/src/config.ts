@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config as loadDotenv } from "dotenv";
 
@@ -29,6 +29,10 @@ function readNumberEnv(name: string, fallback: number): number {
   return parsed;
 }
 
+function resolveDataDir(path: string): string {
+  return isAbsolute(path) ? path : resolve(REPO_ROOT, path);
+}
+
 export function loadProxyConfig(): ProxyConfig {
   if (existsSync(ENV_FILE)) {
     loadDotenv({ path: ENV_FILE });
@@ -56,10 +60,11 @@ export function loadProxyConfig(): ProxyConfig {
   return {
     port: Math.trunc(readNumberEnv("PORT", 3002)),
     host: process.env.HOST ?? "0.0.0.0",
-    dataDir:
+    dataDir: resolveDataDir(
       process.env.CONVEX_DUCKDB_PROXY_DATA_DIR ??
-      process.env.DELTAS_PROXY_DATA_DIR ??
-      DEFAULT_DATA_DIR,
+        process.env.DELTAS_PROXY_DATA_DIR ??
+        DEFAULT_DATA_DIR,
+    ),
     convexBaseUrl,
     convexDeployKey,
     dataBearerToken,
