@@ -1,7 +1,7 @@
 {
   "name": "convex-duckdb",
   "version": "0.0.1",
-  "description": "Sync a local DuckDB mirror of Convex data for ad-hoc analytics.",
+  "description": "CLI to sync a local DuckDB mirror of Convex data for ad-hoc analytics.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -17,7 +17,7 @@
     "node": ">=24.0.0"
   },
   "bin": {
-    "convex-duckdb-sync": "dist/cli.js"
+    "convex-duckdb": "./dist/cli.js"
   },
   "files": [
     "dist",
@@ -27,8 +27,8 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --config vitest.config.ts",
     "cli": "tsx src/cli.ts",
-    "sync": "tsx src/cli.ts refresh",
-    "sync:full": "tsx src/cli.ts refresh --full",
+    "sync": "tsx src/cli.ts sync",
+    "sync:full": "tsx src/cli.ts sync --full",
     "status": "tsx src/cli.ts status"
   },
   "dependencies": {

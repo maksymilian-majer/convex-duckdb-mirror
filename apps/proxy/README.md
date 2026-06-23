@@ -1,6 +1,6 @@
 # convex-duckdb-proxy
 
-HTTP service for Convex DuckDB sync. It polls Convex document deltas into a local SQLite buffer, serves `/api/document_deltas` with extended retention, and pass-through proxies snapshot routes without storing them.
+HTTP service for the Convex DuckDB mirror. It polls Convex document deltas into a local SQLite buffer, serves `/api/document_deltas` with extended retention, and pass-through proxies snapshot routes without storing them.
 
 ## Commands
 
@@ -16,7 +16,7 @@ npm run proxy:test
 Workspace equivalent:
 
 ```bash
-npm --workspace @convex-duckdb-sync/proxy run dev
+npm --workspace convex-duckdb-proxy run dev
 ```
 
 ## Process model

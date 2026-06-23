@@ -1,4 +1,4 @@
-# Railway service config for the Convex DuckDB sync proxy.
+# Railway service config for the Convex DuckDB mirror proxy.
 
 [build]
 buildCommand = "npm run proxy:build"

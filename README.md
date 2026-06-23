@@ -1,4 +1,4 @@
-# Convex DuckDB Sync
+# Convex DuckDB Mirror
 
 Sync Convex data into a local DuckDB database for ad-hoc analytics.
 
@@ -6,17 +6,17 @@ This repo contains two pieces:
 
 | Package | Path | Role |
 | --- | --- | --- |
-| `convex-duckdb-sync` | `apps/cli` | Local CLI. Writes `.convex-duckdb/config.json` and refreshes `.convex-duckdb/data.duckdb`. |
-| `@convex-duckdb-sync/proxy` | `apps/proxy` | Deployable proxy. Polls Convex document deltas and pass-through proxies full snapshot routes. |
+| `convex-duckdb` | `apps/cli` | Local CLI. Writes `.convex-duckdb/config.json` and syncs `.convex-duckdb/data.duckdb`. |
+| `convex-duckdb-proxy` | `apps/proxy` | Deployable proxy. Polls Convex document deltas and pass-through proxies full snapshot routes. |
 
 ## CLI
 
 Run from the repository where you want the local DuckDB file:
 
 ```bash
-npx convex-duckdb-sync install
-npx convex-duckdb-sync status
-npx convex-duckdb-sync refresh
+npx convex-duckdb install
+npx convex-duckdb status
+npx convex-duckdb sync
 ```
 
 Before the npm package is published, use the GitHub repo directly:
@@ -24,7 +24,7 @@ Before the npm package is published, use the GitHub repo directly:
 ```bash
 npx maksymilian-majer/convex-duckdb-mirror install
 npx maksymilian-majer/convex-duckdb-mirror status
-npx maksymilian-majer/convex-duckdb-mirror refresh
+npx maksymilian-majer/convex-duckdb-mirror sync
 ```
 
 `install` writes `.convex-duckdb/config.json`. The CLI reads only that file, not environment variables or `.env` files.
@@ -50,7 +50,7 @@ Install the skill into supported agents with:
 npx skills add maksymilian-majer/convex-duckdb-mirror
 ```
 
-After config exists, agents should use `npx convex-duckdb-sync status`, refresh when needed, then query `.convex-duckdb/data.duckdb` with `duckdb -readonly`.
+After config exists, agents should use `npx convex-duckdb status`, sync when needed, then query `.convex-duckdb/data.duckdb` with `duckdb -readonly`.
 
 ## Localhost Proxy Smoke Test
 
@@ -86,7 +86,7 @@ npx skills add maksymilian-majer/convex-duckdb-mirror
 4. In the consumer repo, configure the CLI:
 
 ```bash
-npx convex-duckdb-sync install
+npx convex-duckdb install
 ```
 
 Use:
@@ -99,8 +99,8 @@ CONVEX_DUCKDB_ACCESS_TOKEN=<same token as apps/proxy/.env.local>
 5. Run:
 
 ```bash
-npx convex-duckdb-sync status --json
-npx convex-duckdb-sync refresh --json
+npx convex-duckdb status --json
+npx convex-duckdb sync --json
 duckdb -readonly .convex-duckdb/data.duckdb -markdown <<< "SHOW TABLES;"
 ```
 
@@ -110,7 +110,7 @@ duckdb -readonly .convex-duckdb/data.duckdb -markdown <<< "SHOW TABLES;"
 npm install
 npm run build
 npm test
-npm pack --workspace convex-duckdb-sync
+npm pack --workspace convex-duckdb
 ```
 
 ## Publishing

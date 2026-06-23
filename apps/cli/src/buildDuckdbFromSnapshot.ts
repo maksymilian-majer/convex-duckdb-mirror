@@ -34,7 +34,7 @@ export async function buildDuckdbFromSnapshot(
   const tables = listSnapshotTables(snapshotDir);
   if (tables.length === 0) {
     throw new Error(
-      `No flat JSONL snapshot files found in ${snapshotDir}. Run: npx convex-duckdb-sync refresh`,
+      `No flat JSONL snapshot files found in ${snapshotDir}. Run: npx convex-duckdb sync`,
     );
   }
 

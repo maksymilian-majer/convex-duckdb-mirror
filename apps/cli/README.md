@@ -1,26 +1,22 @@
-# convex-duckdb-sync
+# convex-duckdb
 
 CLI client for syncing Convex data into a local DuckDB database through a Convex DuckDB proxy.
 
 ```bash
-npx convex-duckdb-sync install
-npx convex-duckdb-sync status
-npx convex-duckdb-sync refresh
-npx convex-duckdb-sync refresh --full
+npx convex-duckdb install
+npx convex-duckdb status
+npx convex-duckdb sync
+npx convex-duckdb sync --full
 ```
 
 ## Config
 
-The CLI reads only:
+`install` writes `.convex-duckdb/config.json`. The CLI reads only that file, not environment variables or `.env` files.
 
-```text
-.convex-duckdb/config.json
-```
-
-Create it with:
+From a consumer repo:
 
 ```bash
-npx convex-duckdb-sync install
+npx convex-duckdb install
 ```
 
 Required keys:
@@ -30,18 +26,16 @@ Required keys:
 | `CONVEX_DUCKDB_PROXY_URL` | Mirror proxy URL |
 | `CONVEX_DUCKDB_ACCESS_TOKEN` | Bearer token for mirror data routes |
 
-The CLI does not load environment variables or `.env` files.
-
-## Sync behavior
+## How sync works
 
 1. Incremental sync fetches document deltas from `/api/document_deltas`.
-2. Full restore downloads collection snapshots through `/api/json_schemas` and `/api/list_snapshot`, then builds `.convex-duckdb/data.duckdb`.
-3. If the mirror retention window expired, refresh performs a full restore automatically.
+2. On first run or after retention expiry, sync performs a full restore from snapshot routes.
+3. If the mirror retention window expired, sync performs a full restore automatically.
 
-Query with the DuckDB CLI:
+Query the local database:
 
 ```bash
-duckdb -readonly .convex-duckdb/data.duckdb -markdown <<< "SELECT count(*) FROM table_name;"
+duckdb -readonly .convex-duckdb/data.duckdb -markdown <<< "SHOW TABLES;"
 ```
 
-See the root README for proxy setup and `skills/convex-duckdb-sync` for reusable agent query patterns.
+See the root README for proxy setup and `skills/convex-duckdb` for reusable agent query patterns.

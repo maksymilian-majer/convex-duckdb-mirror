@@ -379,7 +379,7 @@ export function getLocalStatus(): LocalStatus {
     return {
       ...base,
       status: "missing",
-      message: "No snapshot found. Run: npx convex-duckdb-sync refresh",
+      message: "No snapshot found. Run: npx convex-duckdb sync",
     };
   }
 
@@ -412,7 +412,7 @@ export function getLocalStatus(): LocalStatus {
   }
 
   const parts = [
-    duckdbExists ? "DuckDB ready" : "DuckDB not built (run: npx convex-duckdb-sync refresh)",
+    duckdbExists ? "DuckDB ready" : "DuckDB not built (run: npx convex-duckdb sync)",
   ];
   const ageMs = state?.updatedAt ? Date.now() - new Date(state.updatedAt).getTime() : null;
 

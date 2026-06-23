@@ -26,7 +26,7 @@ import {
 
 const CONFIG_PATH = join(LOCAL_DIR, "config.json");
 const DEFAULT_PROXY_URL = "http://127.0.0.1:3002";
-const COMMANDS = ["install", "status", "refresh"] as const;
+const COMMANDS = ["install", "status", "sync"] as const;
 type Command = (typeof COMMANDS)[number];
 
 interface ConfigFile {
@@ -44,17 +44,17 @@ interface ProxyStatus {
 }
 
 function printUsage(): void {
-  console.log(`Usage: convex-duckdb-sync <command> [options]
+  console.log(`Usage: convex-duckdb <command> [options]
 
 Commands:
   install           Write .convex-duckdb/config.json
   status            Check local snapshot, duckdb CLI, and proxy health
-  refresh           Refresh the local DuckDB mirror
+  sync              Sync the local DuckDB mirror
 
 Options:
   --json            Print machine-readable output where supported
-  --full            Force a full refresh (refresh only)
-  --force           Override an active sync lock (refresh only)
+  --full            Force a full sync (sync only)
+  --force           Override an active sync lock (sync only)
   --help            Show this help
 `);
 }
@@ -102,7 +102,7 @@ function isCommand(value: string): value is Command {
 function readConfigFile(): Config {
   if (!existsSync(CONFIG_PATH)) {
     throw new Error(
-      `Missing config file at ${relativePath(CONFIG_PATH)}. Run: npx convex-duckdb-sync install`,
+      `Missing config file at ${relativePath(CONFIG_PATH)}. Run: npx convex-duckdb install`,
     );
   }
 
@@ -252,7 +252,7 @@ async function statusCommand(json: boolean): Promise<number> {
   return 0;
 }
 
-async function refreshCommand(options: {
+async function syncCommand(options: {
   full: boolean;
   force: boolean;
   json: boolean;
@@ -353,13 +353,13 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
     return 0;
   }
 
-  if (parsed.command !== "refresh" && (parsed.full || parsed.force)) {
-    throw new Error("--full and --force are only valid for refresh.");
+  if (parsed.command !== "sync" && (parsed.full || parsed.force)) {
+    throw new Error("--full and --force are only valid for sync.");
   }
 
   if (parsed.command === "install") return installCommand(parsed.json);
   if (parsed.command === "status") return statusCommand(parsed.json);
-  return refreshCommand(parsed);
+  return syncCommand(parsed);
 }
 
 main().then(

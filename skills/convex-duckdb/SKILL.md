@@ -1,9 +1,9 @@
 ---
-name: convex-duckdb-sync
+name: convex-duckdb
 description: Sync a local DuckDB mirror of Convex data and use it for ad-hoc analytical SQL queries. Use for counts, joins, aggregates, filtering, grouping, time-series analysis, and any query that needs multiple rows or tables.
 ---
 
-# DuckDB Sync
+# Convex DuckDB
 
 Use the Convex DuckDB mirror for analytical queries over Convex data. Prefer DuckDB for counts, joins, grouping, filtering across rows, and trend analysis. Use Convex tools only for single-document lookups or mutations.
 
@@ -14,29 +14,29 @@ Use `duckdb -readonly` for ad-hoc queries. Avoid non-readonly DuckDB CLI queries
 1. Check status:
 
 ```bash
-npx convex-duckdb-sync status --json
+npx convex-duckdb status --json
 ```
 
 If config is missing or invalid, ask the user to run:
 
 ```bash
-npx convex-duckdb-sync install
+npx convex-duckdb install
 ```
 
 Do not run `install` yourself unless the user explicitly asks you to. It collects credentials.
 
 If `duckdb` is missing, ask the user to install the DuckDB CLI on `PATH`. Never install DuckDB for the user.
 
-2. Refresh when needed:
+2. Sync when needed:
 
 ```bash
-npx convex-duckdb-sync refresh
+npx convex-duckdb sync
 ```
 
-Use a full refresh only when the local database is corrupt, schema changed in a way deltas cannot repair, or the user asks for a clean baseline:
+Use a full sync only when the local database is corrupt, schema changed in a way deltas cannot repair, or the user asks for a clean baseline:
 
 ```bash
-npx convex-duckdb-sync refresh --full
+npx convex-duckdb sync --full
 ```
 
 3. Inspect schema before querying.
@@ -91,4 +91,4 @@ ORDER BY 1;
 - The local database path is `.convex-duckdb/data.duckdb`.
 - Local config and data under `.convex-duckdb/` are gitignored.
 - The sync uses the Node DuckDB library. The `duckdb` CLI is only needed for ad-hoc querying.
-- When status reports an active sync, wait for it to finish. Use `refresh --force` only when the lock is clearly orphaned.
+- When status reports an active sync, wait for it to finish. Use `sync --force` only when the lock is clearly orphaned.
