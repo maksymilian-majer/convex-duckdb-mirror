@@ -5,19 +5,19 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/maksymilian-majer/convex-duckdb-sync.git",
+    "url": "git+https://github.com/maksymilian-majer/convex-duckdb-mirror.git",
     "directory": "apps/cli"
   },
   "bugs": {
-    "url": "https://github.com/maksymilian-majer/convex-duckdb-sync/issues"
+    "url": "https://github.com/maksymilian-majer/convex-duckdb-mirror/issues"
   },
-  "homepage": "https://github.com/maksymilian-majer/convex-duckdb-sync#readme",
+  "homepage": "https://github.com/maksymilian-majer/convex-duckdb-mirror#readme",
   "type": "module",
   "engines": {
     "node": ">=24.0.0"
   },
   "bin": {
-    "convex-duckdb-sync": "./dist/cli.js"
+    "convex-duckdb-sync": "dist/cli.js"
   },
   "files": [
     "dist",
