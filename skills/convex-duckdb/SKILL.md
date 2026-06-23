@@ -56,6 +56,21 @@ SQL
 duckdb -readonly .convex-duckdb/data.duckdb -markdown <<< "SELECT count(*) AS rows FROM table_name;"
 ```
 
+## How Convex maps to DuckDB
+
+The mirror loads Convex's exported documents straight into DuckDB and lets DuckDB infer the schema, so column types are emergent rather than declared. Read `convex/schema.ts` for intent (table names, relationships, which fields exist), then reconcile against `DESCRIBE <table>` for the actual DuckDB columns and types before relying on them. Types can vary by deployment, so always `DESCRIBE`.
+
+- Each Convex collection becomes a DuckDB table with the same name; each document is a row.
+- Every table has system columns: `_id` (`VARCHAR`, the key), `_creationTime` (`DOUBLE`, ms since epoch), and `_component` (`VARCHAR`).
+- Relationships: `v.id(...)` fields are `VARCHAR`. Join via ids: `child.parentId = parent._id`.
+- Scalars: `v.string()` → `VARCHAR`; `v.boolean()` → `BOOLEAN`; integer `v.number()` → `BIGINT`; `v.array(v.float64())` → `DOUBLE[]`.
+- Timestamps: app millisecond fields (e.g. `createdAt`) are usually `BIGINT`, so `epoch_ms(createdAt)`. `_creationTime` is `DOUBLE`, so `epoch_ms(_creationTime::bigint)`. ISO-8601 date strings may be inferred as `TIMESTAMP`.
+- Optional fields become nullable columns. A field absent from every synced row may not exist as a column at all — never assume an optional field is present; check with `DESCRIBE`.
+- Nested objects and object-unions become `STRUCT`s (union branches are merged; absent branch fields are NULL). Access with dot notation, e.g. `col.field`.
+- Arrays of objects land as either `STRUCT(...)[]` (use `UNNEST`) or `JSON[]` when row shapes are irregular (use JSON functions like `->>`). Both occur — check the column type first. `v.any()` is likewise inferred per data and may be a `STRUCT` or `JSON`.
+- Column order is not schema order, and delta-introduced columns are appended later — reference columns by name, never by position.
+- A collection that was empty at snapshot time may appear as a stub table with only `(_id VARCHAR)` until its first row syncs.
+
 ## Query Patterns
 
 Join by Convex document IDs:
