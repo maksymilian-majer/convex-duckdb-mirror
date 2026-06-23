@@ -1,6 +1,6 @@
 {
   "name": "convex-duckdb",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "CLI to sync a local DuckDB mirror of Convex data for ad-hoc analytics.",
   "license": "MIT",
   "repository": {
@@ -17,7 +17,7 @@
     "node": ">=24.0.0"
   },
   "bin": {
-    "convex-duckdb": "./dist/cli.js"
+    "convex-duckdb": "dist/cli.js"
   },
   "files": [
     "dist",
