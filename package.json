@@ -11,8 +11,8 @@
   ],
   "scripts": {
     "prepare": "npm run cli:build",
-    "cli:build": "npm --workspace convex-duckdb-sync run build",
-    "cli:test": "npm --workspace convex-duckdb-sync run test",
+    "cli:build": "npm --workspace convex-duckdb run build",
+    "cli:test": "npm --workspace convex-duckdb run test",
     "proxy:dev": "npm --workspace @convex-duckdb-sync/proxy run dev",
     "proxy:build": "npm --workspace @convex-duckdb-sync/proxy run build",
     "proxy:start": "npm --workspace @convex-duckdb-sync/proxy run start",
