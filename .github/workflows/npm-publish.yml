@@ -33,6 +33,4 @@ jobs:
         run: npm run build
 
       - name: Publish CLI package
-        run: npm publish --workspace apps/cli --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --workspace apps/cli --access public
