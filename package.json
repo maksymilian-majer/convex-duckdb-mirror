@@ -1,0 +1,25 @@
+{
+  "name": "convex-duckdb-sync-repo",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "cli:build": "npm --workspace convex-duckdb-sync run build",
+    "cli:test": "npm --workspace convex-duckdb-sync run test",
+    "proxy:dev": "npm --workspace @convex-duckdb-sync/proxy run dev",
+    "proxy:build": "npm --workspace @convex-duckdb-sync/proxy run build",
+    "proxy:start": "npm --workspace @convex-duckdb-sync/proxy run start",
+    "proxy:test": "npm --workspace @convex-duckdb-sync/proxy run test",
+    "test": "npm run cli:test && npm run proxy:test",
+    "build": "npm run cli:build && npm run proxy:build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.8"
+  }
+}

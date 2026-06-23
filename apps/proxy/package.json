@@ -1,0 +1,29 @@
+{
+  "name": "@convex-duckdb-sync/proxy",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "bash scripts/dev.sh",
+    "dev:server": "tsx watch src/server.ts",
+    "dev:poller": "tsx watch src/pollerMain.ts",
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts",
+    "start": "bash scripts/start.sh"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "fastify": "^5.6.2",
+    "node-cron": "^4.2.1",
+    "pino": "^9.14.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.8"
+  }
+}

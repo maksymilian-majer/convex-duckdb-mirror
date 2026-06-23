@@ -1,0 +1,12 @@
+# Railway service config for the Convex DuckDB sync proxy.
+
+[build]
+buildCommand = "npm run proxy:build"
+watchPatterns = [
+  "apps/proxy/**",
+  "package.json",
+  "package-lock.json"
+]
+
+[deploy]
+startCommand = "npm run proxy:start"
