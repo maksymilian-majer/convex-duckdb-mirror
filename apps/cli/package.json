@@ -1,6 +1,6 @@
 {
   "name": "convex-duckdb-sync",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Sync a local DuckDB mirror of Convex data for ad-hoc analytics.",
   "license": "MIT",
   "repository": {
