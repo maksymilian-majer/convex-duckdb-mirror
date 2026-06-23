@@ -19,6 +19,14 @@ npx convex-duckdb-sync status
 npx convex-duckdb-sync refresh
 ```
 
+Before the npm package is published, use the GitHub repo directly:
+
+```bash
+npx maksymilian-majer/convex-duckdb-sync install
+npx maksymilian-majer/convex-duckdb-sync status
+npx maksymilian-majer/convex-duckdb-sync refresh
+```
+
 `install` writes `.convex-duckdb/config.json`. The CLI reads only that file, not environment variables or `.env` files.
 
 Required config values:
