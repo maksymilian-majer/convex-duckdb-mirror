@@ -27,22 +27,34 @@ export function normalizeQuery(query: Record<string, unknown>): Record<string, s
   return out;
 }
 
+export function buildConvexGetUrl(
+  config: ConvexUpstreamConfig,
+  path: string,
+  query: Record<string, string>,
+): URL {
+  const url = new URL(path, config.baseUrl);
+  for (const [key, value] of Object.entries(query)) {
+    url.searchParams.set(key, value);
+  }
+  return url;
+}
+
+export function convexAuthHeaders(config: ConvexUpstreamConfig): Record<string, string> {
+  return {
+    Authorization: `Convex ${config.deployKey}`,
+    "Convex-Client": "convex-duckdb-proxy-0.1",
+  };
+}
+
 export async function forwardConvexGet(
   config: ConvexUpstreamConfig,
   path: string,
   query: Record<string, string>,
   fetchFn: FetchFn = fetch,
 ): Promise<ConvexPassthroughResponse> {
-  const url = new URL(path, config.baseUrl);
-  for (const [key, value] of Object.entries(query)) {
-    url.searchParams.set(key, value);
-  }
-
+  const url = buildConvexGetUrl(config, path, query);
   const response = await fetchFn(url.toString(), {
-    headers: {
-      Authorization: `Convex ${config.deployKey}`,
-      "Convex-Client": "convex-duckdb-proxy-0.1",
-    },
+    headers: convexAuthHeaders(config),
   });
 
   return {

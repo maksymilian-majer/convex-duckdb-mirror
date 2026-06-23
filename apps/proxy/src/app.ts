@@ -1,9 +1,11 @@
+import { Readable, Transform } from "node:stream";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import fastify from "fastify";
 import { parseCursor, stringifyConvexJson } from "./convexJson.js";
 import {
+  buildConvexGetUrl,
   type ConvexUpstreamConfig,
-  forwardConvexGet,
+  convexAuthHeaders,
   normalizeQuery,
 } from "./convexPassthrough.js";
 import {
@@ -11,6 +13,7 @@ import {
   queueMsSinceRequestStart,
   roundMs,
   scheduleDocumentDeltaPageLog,
+  scheduleSnapshotPassthroughLog,
 } from "./requestTiming.js";
 import type { DeltasStore } from "./store.js";
 
@@ -87,15 +90,76 @@ async function sendConvexPassthrough(
     return;
   }
 
+  const queueMs = queueMsSinceRequestStart(request);
   const query =
     typeof request.query === "object" && request.query !== null
       ? normalizeQuery(request.query as Record<string, unknown>)
       : {};
-  const upstream = await forwardConvexGet(convex, path, query);
-  if (upstream.contentType) {
-    reply.type(upstream.contentType);
+  const tableName = query.tableName ?? null;
+
+  const url = buildConvexGetUrl(convex, path, query);
+  const fetchStartedAt = performance.now();
+  const response = await fetch(url.toString(), {
+    headers: convexAuthHeaders(convex),
+  });
+  const upstreamHeadersMs = performance.now() - fetchStartedAt;
+  const contentType = response.headers.get("content-type");
+
+  if (response.body === null) {
+    const body = await response.text();
+    const bodyBytes = Buffer.byteLength(body, "utf8");
+    if (contentType) {
+      reply.type(contentType);
+    }
+    const sendStartedAt = performance.now();
+    const markSendComplete = scheduleSnapshotPassthroughLog(request, reply, (sendCompletedAt) => ({
+      path,
+      tableName,
+      bodyBytes,
+      queueMs: queueMs === null ? null : roundMs(queueMs),
+      upstreamHeadersMs: roundMs(upstreamHeadersMs),
+      upstreamBodyMs: 0,
+      sendMs: roundMs(sendCompletedAt - sendStartedAt),
+    }));
+    await reply.code(response.status).send(body);
+    markSendComplete(performance.now());
+    return;
   }
-  await reply.code(upstream.status).send(upstream.body);
+
+  let bodyBytes = 0;
+  let upstreamBodyEndedAt: number | null = null;
+  const upstreamBodyStartedAt = performance.now();
+  const upstream = Readable.fromWeb(response.body);
+  const counting = new Transform({
+    transform(chunk, _encoding, callback) {
+      bodyBytes += chunk.length;
+      callback(null, chunk);
+    },
+  });
+
+  upstream.once("end", () => {
+    upstreamBodyEndedAt = performance.now();
+  });
+
+  if (contentType) {
+    reply.type(contentType);
+  }
+
+  const sendStartedAt = performance.now();
+  const upstreamBodyMs = () =>
+    roundMs((upstreamBodyEndedAt ?? performance.now()) - upstreamBodyStartedAt);
+  scheduleSnapshotPassthroughLog(request, reply, (sendCompletedAt) => ({
+    path,
+    tableName,
+    bodyBytes,
+    queueMs: queueMs === null ? null : roundMs(queueMs),
+    upstreamHeadersMs: roundMs(upstreamHeadersMs),
+    upstreamBodyMs: upstreamBodyMs(),
+    sendMs: roundMs(sendCompletedAt - sendStartedAt),
+  }));
+
+  const stream = upstream.pipe(counting);
+  await reply.code(response.status).send(stream);
 }
 
 export function buildProxyServer(options: BuildProxyServerOptions) {

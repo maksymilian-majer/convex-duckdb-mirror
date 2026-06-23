@@ -55,6 +55,7 @@ Options:
   --json            Print machine-readable output where supported
   --full            Force a full sync (sync only)
   --force           Override an active sync lock (sync only)
+  --debug           Print snapshot download timings (sync only)
   --help            Show this help
 `);
 }
@@ -64,6 +65,7 @@ function parseCli(argv: string[]): {
   json: boolean;
   full: boolean;
   force: boolean;
+  debug: boolean;
 } {
   const { values, positionals } = parseArgs({
     args: argv,
@@ -72,12 +74,19 @@ function parseCli(argv: string[]): {
       json: { type: "boolean", default: false },
       full: { type: "boolean", default: false },
       force: { type: "boolean", default: false },
+      debug: { type: "boolean", default: false },
       help: { type: "boolean", default: false },
     },
   });
 
   if (values.help || positionals.length === 0) {
-    return { command: null, json: Boolean(values.json), full: false, force: false };
+    return {
+      command: null,
+      json: Boolean(values.json),
+      full: false,
+      force: false,
+      debug: false,
+    };
   }
   if (positionals.length > 1) {
     throw new Error(`Unexpected argument(s): ${positionals.slice(1).join(", ")}`);
@@ -92,6 +101,7 @@ function parseCli(argv: string[]): {
     json: Boolean(values.json),
     full: Boolean(values.full),
     force: Boolean(values.force),
+    debug: Boolean(values.debug),
   };
 }
 
@@ -255,6 +265,7 @@ async function statusCommand(json: boolean): Promise<number> {
 async function syncCommand(options: {
   full: boolean;
   force: boolean;
+  debug: boolean;
   json: boolean;
 }): Promise<number> {
   const config = readConfigFile();
@@ -262,6 +273,7 @@ async function syncCommand(options: {
     performSync(config, {
       full: options.full,
       force: options.force,
+      debug: options.debug,
     });
 
   const result = options.json ? await withConsoleLogSilenced(run) : await run();
@@ -353,8 +365,8 @@ async function main(argv = process.argv.slice(2)): Promise<number> {
     return 0;
   }
 
-  if (parsed.command !== "sync" && (parsed.full || parsed.force)) {
-    throw new Error("--full and --force are only valid for sync.");
+  if (parsed.command !== "sync" && (parsed.full || parsed.force || parsed.debug)) {
+    throw new Error("--full, --force, and --debug are only valid for sync.");
   }
 
   if (parsed.command === "install") return installCommand(parsed.json);

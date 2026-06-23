@@ -34,7 +34,15 @@ const STATE_PATHS = {
   metadataFile: join(SNAPSHOT_DIR, "metadata.json"),
   syncStateFile: join(SNAPSHOT_DIR, "sync-state.json"),
 };
-const SNAPSHOT_CONCURRENCY = 5;
+const SNAPSHOT_CONCURRENCY = 12;
+
+interface SnapshotPageTimings {
+  pageCount: number;
+  totalBytes: number;
+  totalFetchMs: number;
+  totalAppendMs: number;
+  totalRows: number;
+}
 
 interface SnapshotPage {
   values: Array<Record<string, unknown>>;
@@ -90,12 +98,22 @@ async function snapshotCollection(
   collection: string,
   snapshot: string,
   jsonlPath: string,
-): Promise<{ collection: string; rowCount: number; sizeBytes: number }> {
+  debug: boolean,
+): Promise<{
+  collection: string;
+  rowCount: number;
+  sizeBytes: number;
+  timings: SnapshotPageTimings;
+}> {
   mkdirSync(dirname(jsonlPath), { recursive: true });
   writeFileSync(jsonlPath, "");
 
   let cursor: string | undefined;
   let rowCount = 0;
+  let pageCount = 0;
+  let totalBytes = 0;
+  let totalFetchMs = 0;
+  let totalAppendMs = 0;
 
   while (true) {
     const params: Record<string, string> = {
@@ -105,24 +123,51 @@ async function snapshotCollection(
     };
     if (cursor) params.cursor = cursor;
 
+    const fetchStartedAt = performance.now();
     const page = await mirrorGet<SnapshotPage>(config, "/api/list_snapshot", params);
+    const fetchMs = performance.now() - fetchStartedAt;
+    totalFetchMs += fetchMs;
+
     if (!Array.isArray(page.values)) {
       throw new Error(`Unexpected /api/list_snapshot values for ${collection}.`);
     }
 
+    pageCount += 1;
+    let appendMs = 0;
+    let pageBytes = 0;
     if (page.values.length > 0) {
-      appendFileSync(
-        jsonlPath,
-        `${page.values.map((row) => JSON.stringify(stripExportFields(row))).join("\n")}\n`,
-      );
+      const appendStartedAt = performance.now();
+      const chunk = `${page.values.map((row) => JSON.stringify(stripExportFields(row))).join("\n")}\n`;
+      appendFileSync(jsonlPath, chunk);
+      appendMs = performance.now() - appendStartedAt;
+      pageBytes = Buffer.byteLength(chunk, "utf8");
+      totalBytes += pageBytes;
       rowCount += page.values.length;
+    }
+    totalAppendMs += appendMs;
+
+    if (debug) {
+      console.log(
+        `    [debug] ${collection} page ${pageCount}: ${formatBytes(pageBytes)}, fetch ${formatDuration(fetchMs)}, append ${formatDuration(appendMs)}, ${page.values.length} rows`,
+      );
     }
 
     if (!page.hasMore) break;
     cursor = snapshotPageCursorToString(page.cursor, "cursor");
   }
 
-  return { collection, rowCount, sizeBytes: statSync(jsonlPath).size };
+  return {
+    collection,
+    rowCount,
+    sizeBytes: statSync(jsonlPath).size,
+    timings: {
+      pageCount,
+      totalBytes,
+      totalFetchMs,
+      totalAppendMs,
+      totalRows: rowCount,
+    },
+  };
 }
 
 function stripExportFields(row: Record<string, unknown>): Record<string, unknown> {
@@ -135,7 +180,7 @@ function cleanDir(path: string): void {
   mkdirSync(path, { recursive: true });
 }
 
-async function performFullRestore(config: Config): Promise<SyncResult> {
+async function performFullRestore(config: Config, debug: boolean): Promise<SyncResult> {
   const started = performance.now();
   console.log("==> Discovering Convex collections...");
   const collections = await discoverCollections(config);
@@ -150,7 +195,8 @@ async function performFullRestore(config: Config): Promise<SyncResult> {
   cleanDir(STAGING_DIR);
   try {
     console.log(`==> Downloading ${collections.length} collections from mirror snapshot...`);
-    await poolMap(
+    const downloadStartedAt = performance.now();
+    const results = await poolMap(
       collections,
       async (collection) => {
         const result = await snapshotCollection(
@@ -158,12 +204,20 @@ async function performFullRestore(config: Config): Promise<SyncResult> {
           collection,
           snapshot,
           join(STAGING_DIR, `${collection}.jsonl`),
+          debug,
         );
         console.log(`    ${collection}: snapshot (${result.rowCount} rows)`);
         return result;
       },
       SNAPSHOT_CONCURRENCY,
     );
+    const downloadDurationMs = performance.now() - downloadStartedAt;
+    const downloadStats = summarizeSnapshotDownloads(results);
+    if (debug) {
+      console.log(
+        `    [debug] Snapshot download: ${downloadStats.pageCount} pages, ${formatBytes(downloadStats.totalBytes)}, fetch ${formatDuration(downloadStats.totalFetchMs)}, append ${formatDuration(downloadStats.totalAppendMs)}, wall ${formatDuration(downloadDurationMs)}, ${formatThroughput(downloadStats.totalBytes, downloadDurationMs)}`,
+      );
+    }
 
     console.log("==> Building DuckDB from mirror snapshot...");
     const tables = await buildDuckdbFromSnapshot(STAGING_DIR, DUCKDB_PATH);
@@ -267,11 +321,11 @@ function normalizeDeltaRow(row: Record<string, unknown>, offset: number): DeltaE
   };
 }
 
-async function performIncrementalSync(config: Config): Promise<SyncResult> {
+async function performIncrementalSync(config: Config, debug: boolean): Promise<SyncResult> {
   const state = readSyncState(STATE_PATHS);
   if (!state || !existsSync(DUCKDB_PATH)) {
     console.log("==> No local DuckDB sync state found; performing full restore.");
-    return performFullRestore(config);
+    return performFullRestore(config, debug);
   }
 
   const started = performance.now();
@@ -323,7 +377,7 @@ async function performIncrementalSync(config: Config): Promise<SyncResult> {
   } catch (error) {
     if (isInvalidWindowError(error)) {
       console.log("==> Proxy retention window expired; performing full restore.");
-      return performFullRestore(config);
+      return performFullRestore(config, debug);
     }
     throw error;
   }
@@ -341,7 +395,7 @@ async function refreshStateTimestamp(state: SyncState, newCursor: string): Promi
 
 export async function performSync(
   config: Config,
-  options: { full: boolean; force: boolean },
+  options: { full: boolean; force: boolean; debug: boolean },
 ): Promise<SyncResult> {
   mkdirSync(LOCAL_DIR, { recursive: true });
   const priorMetadata = readMetadata(STATE_PATHS);
@@ -349,7 +403,9 @@ export async function performSync(
   await acquireLock(STATE_PATHS);
 
   try {
-    return options.full ? await performFullRestore(config) : await performIncrementalSync(config);
+    return options.full
+      ? await performFullRestore(config, options.debug)
+      : await performIncrementalSync(config, options.debug);
   } catch (error) {
     const meta = readMetadata(STATE_PATHS);
     if (meta?.status === "syncing" && meta.pid === process.pid) {
@@ -477,4 +533,41 @@ function formatAge(ms: number): string {
   if (minutes < 60) return `${minutes}m ago`;
   if (minutes < 1440) return `${Math.round(minutes / 60)}h ago`;
   return `${Math.round(minutes / 1440)}d ago`;
+}
+
+function summarizeSnapshotDownloads(
+  results: Array<{ timings: SnapshotPageTimings }>,
+): SnapshotPageTimings {
+  return results.reduce<SnapshotPageTimings>(
+    (summary, result) => ({
+      pageCount: summary.pageCount + result.timings.pageCount,
+      totalBytes: summary.totalBytes + result.timings.totalBytes,
+      totalFetchMs: summary.totalFetchMs + result.timings.totalFetchMs,
+      totalAppendMs: summary.totalAppendMs + result.timings.totalAppendMs,
+      totalRows: summary.totalRows + result.timings.totalRows,
+    }),
+    {
+      pageCount: 0,
+      totalBytes: 0,
+      totalFetchMs: 0,
+      totalAppendMs: 0,
+      totalRows: 0,
+    },
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+function formatThroughput(bytes: number, durationMs: number): string {
+  if (durationMs <= 0) return "0 B/s";
+  const bytesPerSecond = bytes / (durationMs / 1000);
+  if (bytesPerSecond < 1024 * 1024) {
+    return `${(bytesPerSecond / 1024).toFixed(1)} KB/s effective`;
+  }
+  return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s effective`;
 }
