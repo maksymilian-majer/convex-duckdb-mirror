@@ -8,18 +8,23 @@ It has two halves: a **proxy** you deploy once (e.g. on Railway) that holds your
 
 This is the fast path: deploy the proxy, point the CLI at it, sync, and hand it to your agent. You don't need to clone this repo.
 
-> [!NOTE]
-> **One-click deploy is coming soon.** We're publishing a Railway template that provisions the volume and auto-generates the access token, so this becomes a single "Deploy on Railway" button. Until then, follow the manual deploy below — it's the same result, just a few more clicks.
+Use the tested Railway template for the shortest setup path:
+
+```text
+https://railway.com/deploy/p-a9bt
+```
+
+The template provisions the proxy service, a volume for the SQLite buffer, and a generated `CONVEX_DUCKDB_ACCESS_TOKEN`. After deployment, add your Convex deployment URL and deploy key, then use the generated access token when configuring the CLI.
 
 ### 1. Deploy the proxy to Railway
 
-Create a Railway service from this repo (it builds and starts from [`railway.toml`](railway.toml)), **add a volume** for the SQLite buffer, then set these variables:
+Deploy the Railway template above, or create a Railway service from this repo manually (it builds and starts from [`railway.toml`](railway.toml)). If deploying manually, **add a volume** for the SQLite buffer. Set these variables:
 
 | Variable | Where it comes from |
 | --- | --- |
 | `SYNC_CONVEX_DEPLOY_KEY` | A Convex **production** deploy key — see below |
 | `NEXT_PUBLIC_CONVEX_URL` | Convex dashboard → [Settings → URL and Deploy Key](https://docs.convex.dev/dashboard/deployments/deployment-settings) (your deployment URL) |
-| `CONVEX_DUCKDB_ACCESS_TOKEN` | A shared secret for the CLI. The Railway template generates this for you — look it up in the Railway dashboard. For a manual deploy, set your own, e.g. `openssl rand -hex 32` |
+| `CONVEX_DUCKDB_ACCESS_TOKEN` | A shared secret for the CLI. The Railway template generates this for you; look it up in the Railway dashboard. For a manual deploy, set your own, e.g. `openssl rand -hex 32` |
 | `CONVEX_DUCKDB_PROXY_DATA_DIR` | Path on the mounted volume, e.g. `/data/convex-duckdb-proxy` |
 
 **Getting the deploy key.** Either copy a production deploy key from the Convex dashboard ([Settings → URL and Deploy Key](https://docs.convex.dev/dashboard/deployments/deployment-settings)), or mint one from the [Convex CLI](https://docs.convex.dev/cli/deploy-key-types) (often quicker):
