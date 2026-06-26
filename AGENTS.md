@@ -79,7 +79,7 @@ duckdb -readonly .convex-duckdb/data.duckdb -markdown <<< "SHOW TABLES;"
 - On a fresh volume, startup must create the SQLite DB and schema if missing.
 - The proxy buffers `GET /api/document_deltas` in SQLite and passes `GET /api/json_schemas` and `GET /api/list_snapshot` through to Convex unchanged.
 - `/status` is ready only when deltas are buffered, the data-route access token is configured, and snapshot pass-through is wired.
-- Required proxy env vars are documented in `README.md`. `SYNC_CONVEX_DEPLOY_KEY` must remain server-only and must never be exposed to CLI users.
+- Required proxy env vars are documented in `README.md`. `CONVEX_DEPLOY_KEY` must remain server-only and must never be exposed to CLI users.
 
 ## Local smoke test
 

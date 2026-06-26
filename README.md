@@ -22,8 +22,8 @@ Deploy the Railway template above, or create a Railway service from this repo ma
 
 | Variable | Where it comes from |
 | --- | --- |
-| `SYNC_CONVEX_DEPLOY_KEY` | A Convex **production** deploy key — see below |
-| `NEXT_PUBLIC_CONVEX_URL` | Convex dashboard → [Settings → URL and Deploy Key](https://docs.convex.dev/dashboard/deployments/deployment-settings) (your deployment URL) |
+| `CONVEX_DEPLOY_KEY` | A Convex **production** deploy key — see below |
+| `CONVEX_URL` | Convex dashboard -> [Settings -> URL and Deploy Key](https://docs.convex.dev/dashboard/deployments/deployment-settings) (your deployment URL) |
 | `CONVEX_DUCKDB_ACCESS_TOKEN` | A shared secret for the CLI. The Railway template generates this for you; look it up in the Railway dashboard. For a manual deploy, set your own, e.g. `openssl rand -hex 32` |
 | `CONVEX_DUCKDB_PROXY_DATA_DIR` | Path on the mounted volume, e.g. `/data/convex-duckdb-proxy` |
 
@@ -33,7 +33,7 @@ Deploy the Railway template above, or create a Railway service from this repo ma
 npx convex deployment token create convex-duckdb-proxy --deployment prod
 ```
 
-Run it from your Convex project while logged in (`npx convex login`), and not with `CONVEX_DEPLOY_KEY` already in your environment. Paste the printed key into Railway as `SYNC_CONVEX_DEPLOY_KEY`.
+Run it from your Convex project while logged in (`npx convex login`), and not with `CONVEX_DEPLOY_KEY` already in your environment. Paste the printed key into Railway as `CONVEX_DEPLOY_KEY`.
 
 Railway provides the public URL and injects `PORT` automatically. When the service is up, note its public URL and the value of `CONVEX_DUCKDB_ACCESS_TOKEN`.
 
@@ -164,8 +164,8 @@ Set these where the proxy runs — Railway service variables in production, or `
 
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
-| `SYNC_CONVEX_DEPLOY_KEY` | yes | — | Server-only. Used to poll Convex. Never sent to clients. |
-| `NEXT_PUBLIC_CONVEX_URL` | yes | — | Convex deployment URL. |
+| `CONVEX_DEPLOY_KEY` | yes | — | Server-only. Used to poll Convex. Never sent to clients. |
+| `CONVEX_URL` | yes | — | Convex deployment URL. |
 | `CONVEX_DUCKDB_ACCESS_TOKEN` | yes | — | Bearer token for mirror data routes. Must match the CLI's token. |
 | `CONVEX_DUCKDB_PROXY_DATA_DIR` | recommended | `apps/proxy/data` | SQLite buffer location; point at a mounted volume in production. Deprecated alias: `DELTAS_PROXY_DATA_DIR`. |
 | `PORT` | no | `3002` | HTTP port. Railway sets this automatically. |

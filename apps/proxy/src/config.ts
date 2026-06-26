@@ -38,18 +38,14 @@ export function loadProxyConfig(): ProxyConfig {
     loadDotenv({ path: ENV_FILE });
   }
 
-  const convexDeployKey = process.env.SYNC_CONVEX_DEPLOY_KEY;
+  const convexDeployKey = process.env.CONVEX_DEPLOY_KEY;
   if (!convexDeployKey) {
-    throw new Error("SYNC_CONVEX_DEPLOY_KEY is required.");
+    throw new Error("CONVEX_DEPLOY_KEY is required.");
   }
 
-  const convexBaseUrl = (
-    process.env.NEXT_PUBLIC_CONVEX_URL ??
-    process.env.CONVEX_URL ??
-    ""
-  ).replace(/\/$/, "");
+  const convexBaseUrl = (process.env.CONVEX_URL ?? "").replace(/\/$/, "");
   if (!convexBaseUrl) {
-    throw new Error("NEXT_PUBLIC_CONVEX_URL or CONVEX_URL is required.");
+    throw new Error("CONVEX_URL is required.");
   }
 
   const dataBearerToken = process.env.CONVEX_DUCKDB_ACCESS_TOKEN;
