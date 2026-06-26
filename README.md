@@ -1,28 +1,30 @@
 # Convex DuckDB Mirror
 
-Give your AI agents a fast, local, read-only copy of your Convex data to run SQL against. DuckDB answers analytical queries in ~50–100 ms even over multi-gigabyte dumps, so an agent can tirelessly explore counts, joins, aggregates, and trends across your app's tables — without touching your live Convex deployment.
+Convex is fantastic, until you need an ad-hoc `JOIN` or a `GROUP BY` over your whole dataset. Then you hit the wall: Convex has no real support for the aggregate- and join-heavy, exploratory queries you reach for constantly while building an app.
 
-It has two halves: a **proxy** you deploy once (e.g. on Railway) that holds your Convex deploy key and buffers data, and a **CLI** you run wherever you want the DuckDB file. The Convex deploy key never leaves the server — the CLI only ever talks to the proxy.
+Convex DuckDB Mirror fills that gap. It gives your AI agents a fast, local, read-only copy of your Convex data to run real SQL against. DuckDB answers analytical queries in ~8–50 ms even over multi-gigabyte dumps, so an agent can tirelessly explore aggregates, joins, and trends, and freely poke at your app's tables. You keep all of Convex's guarantees, now supercharged with SQL superpowers, powered by DuckDB and an AI agent skill.
 
-## Quickstart — deploy on Railway in ~5 minutes
+The mirror has two halves: a **proxy** you deploy once (e.g. on Railway) that holds your Convex deploy key and buffers data, and a **CLI** you run from your project's repo that maintains the DuckDB mirror and exposes it to your AI agents, or to yourself if you're a stubborn holdout who still writes SQL by hand.
 
-This is the fast path: deploy the proxy, point the CLI at it, sync, and hand it to your agent. You don't need to clone this repo.
+## Quickstart: deploy on Railway in ~5 minutes
 
-Use the tested Railway template for the shortest setup path:
+This is the fast path: deploy the proxy, point the CLI at it, sync, and hand it to your AI agent. You don't need to clone this repo.
+
+Use the Railway template for the shortest setup path:
 
 ```text
 https://railway.com/deploy/p-a9bt
 ```
 
-The template provisions the proxy service, a volume for the SQLite buffer, and a generated `CONVEX_DUCKDB_ACCESS_TOKEN`. After deployment, add your Convex deployment URL and deploy key, then use the generated access token when configuring the CLI.
+The template provisions the proxy service, a volume for the deltas buffer, and a generated `CONVEX_DUCKDB_ACCESS_TOKEN`. It asks for the `CONVEX_URL` and `CONVEX_DEPLOY_KEY` of your Convex deployment; save the generated access token to hand to the CLI in step 2.
 
 ### 1. Deploy the proxy to Railway
 
-Deploy the Railway template above, or create a Railway service from this repo manually (it builds and starts from [`railway.toml`](railway.toml)). If deploying manually, **add a volume** for the SQLite buffer. Set these variables:
+Deploy the Railway template above, or create a Railway service from this repo manually (it builds and starts from [`railway.toml`](railway.toml)). If deploying manually, **add a volume** for the SQLite-backed deltas buffer. Set these variables:
 
 | Variable | Where it comes from |
 | --- | --- |
-| `CONVEX_DEPLOY_KEY` | A Convex **production** deploy key — see below |
+| `CONVEX_DEPLOY_KEY` | A Convex **production** deploy key (see below) |
 | `CONVEX_URL` | Convex dashboard -> [Settings -> URL and Deploy Key](https://docs.convex.dev/dashboard/deployments/deployment-settings) (your deployment URL) |
 | `CONVEX_DUCKDB_ACCESS_TOKEN` | A shared secret for the CLI. The Railway template generates this for you; look it up in the Railway dashboard. For a manual deploy, set your own, e.g. `openssl rand -hex 32` |
 | `CONVEX_DUCKDB_PROXY_DATA_DIR` | Path on the mounted volume, e.g. `/data/convex-duckdb-proxy` |
@@ -30,10 +32,10 @@ Deploy the Railway template above, or create a Railway service from this repo ma
 **Getting the deploy key.** Either copy a production deploy key from the Convex dashboard ([Settings → URL and Deploy Key](https://docs.convex.dev/dashboard/deployments/deployment-settings)), or mint one from the [Convex CLI](https://docs.convex.dev/cli/deploy-key-types) (often quicker):
 
 ```bash
-npx convex deployment token create convex-duckdb-proxy --deployment prod
+npx convex deployment token create convex-duckdb-proxy
 ```
 
-Run it from your Convex project while logged in (`npx convex login`), and not with `CONVEX_DEPLOY_KEY` already in your environment. Paste the printed key into Railway as `CONVEX_DEPLOY_KEY`.
+Run it from your Convex project while logged in (`npx convex login`). Paste the printed key into Railway as `CONVEX_DEPLOY_KEY`.
 
 Railway provides the public URL and injects `PORT` automatically. When the service is up, note its public URL and the value of `CONVEX_DUCKDB_ACCESS_TOKEN`.
 
@@ -47,10 +49,10 @@ npx convex-duckdb install
 
 `install` is interactive and writes `.convex-duckdb/config.json`. Give it:
 
-- **Proxy URL** — your Railway service's public URL
-- **Access token** — the same `CONVEX_DUCKDB_ACCESS_TOKEN` value from the Railway dashboard
+- **Proxy URL**: your Railway service's public URL
+- **Access token**: the same `CONVEX_DUCKDB_ACCESS_TOKEN` value from the Railway dashboard
 
-The CLI reads **only** `.convex-duckdb/config.json` — never environment variables or `.env` files.
+The CLI reads **only** `.convex-duckdb/config.json`, never environment variables or `.env` files.
 
 > Before the npm package is published, replace `convex-duckdb` with the GitHub form, e.g. `npx maksymilian-majer/convex-duckdb-mirror install`.
 
@@ -72,11 +74,11 @@ This is the real payoff. Install the skill into your agent:
 npx skills add maksymilian-majer/convex-duckdb-mirror
 ```
 
-Now your agent can keep the mirror in sync and write SQL against it directly. See [Agent analytics](#agent-analytics).
+Now your agent can keep the mirror in sync and write ad-hoc SQL against it directly.
 
-## Agent analytics
+## AI Agent data analytics and debugging
 
-This is what the mirror is for. With the skill installed, an agent treats `.convex-duckdb/data.duckdb` as a read-only analytics database: it checks sync status, refreshes when stale, and writes SQL directly. DuckDB's speed (~50–100 ms on multi-GB files) means the agent can iterate freely — exploring, aggregating, and joining — without hammering your live Convex deployment.
+This is what the mirror is for. With the skill installed, an agent treats `.convex-duckdb/data.duckdb` as a read-only analytics database: it checks sync status, refreshes when stale, and writes SQL directly. At ~8–50 ms per query even on multi-GB files, the agent can iterate as fast as it can think: exploring, aggregating, joining, and drilling into thorny data issues. Convex is no longer the bottleneck; the only limit is the agent's next thought.
 
 For example, top authors by bookmarked tweets:
 
@@ -89,27 +91,28 @@ ORDER BY bookmarks DESC
 LIMIT 10;
 ```
 
-A scan-and-group aggregate like this would take tens of seconds — even minutes — against Convex, but returns in ~50 ms from the DuckDB mirror.
+The same scan-and-group against Convex takes tens of seconds, sometimes minutes. From the DuckDB mirror it's back in ~20 ms.
 
 To write correct queries, an agent should:
 
-1. **Read intent from your Convex schema** — usually `convex/schema.ts` — to learn table names, fields, and relationships.
-2. **Confirm the real columns and types** with `DESCRIBE <table>`, because the mirror infers DuckDB types from the exported data rather than from the schema.
-3. **Cast where needed** (e.g. millisecond timestamps via `epoch_ms(field::bigint)`).
+1. **Start with your Convex schema** (usually `convex/schema.ts`) to learn table names, fields, and relationships.
+2. **(Optional) Confirm the real columns and types** with `DESCRIBE <table>`, since the mirror infers DuckDB types from the exported data, not from the schema.
+3. **Cast where needed**, e.g. millisecond timestamps via `epoch_ms(field::bigint)`.
 
 How Convex maps to DuckDB, in short: each Convex collection becomes a DuckDB table of the same name; documents become rows; `_id` is the `VARCHAR` key used for joins (`child.parentId = parent._id`), alongside system columns `_creationTime` and `_component`; optional fields become nullable columns; nested objects become `STRUCT`s and arrays of objects become `STRUCT(...)[]` or `JSON[]`. Types are inferred, so always `DESCRIBE` before relying on a column's type. The full conventions and reusable query patterns live in [`skills/convex-duckdb`](skills/convex-duckdb/SKILL.md).
 
 ## Why this exists
 
-This project was spun out of building [Livemarks.io](https://livemarks.io), a data-heavy, engineering-heavy project where AI agents had to stay grounded in production data to make progress and iterate quickly.
+This project was spun out of building [livemarks.io](https://livemarks.io), a data-heavy, engineering-heavy project where AI agents had to stay grounded in production data to make progress and iterate quickly. This became especially critical when we iterated on fixing data bugs, and worked on the AI evals.
 
-Convex's official path to external analytics is its streaming-export API feeding general-purpose connectors like Fivetran and Airbyte into a data warehouse. That's powerful but heavy: multiple sinks, accounts, and operational overhead for a use case that often just needs *some* fast SQL.
+Convex's official path to external analytics is its streaming-export API feeding general-purpose connectors like Fivetran and Airbyte into a data warehouse. That's heavy: multiple sinks, accounts, and operational overhead for a use case that often just needs *some* fast SQL.
 
-This project is the opposite — narrow on purpose:
+This project is the opposite, narrow on purpose:
 
-- **One sink: DuckDB.** No warehouse, no connector platform.
+- **One sink: local DuckDB.** No warehouse, no connector platform.
 - **Operationally lightweight.** A single small proxy plus a CLI.
 - **Opinionated and agent-first.** Built so AI agents can poke at your app's data and get answers in milliseconds.
+- **Ruthlessly scoped to developers.** Helps you or your agent ship faster → in. Anything else → out.
 
 It's built on the same Convex streaming-export endpoints those connectors use. That API is currently beta, so its endpoints and formats can change.
 
@@ -119,9 +122,9 @@ It's built on the same Convex streaming-export endpoints those connectors use. T
 
 The proxy exists to make delta sync **reliable and fast**.
 
-Convex's streaming-export delta window is short and outside our control: step away for a weekend and the deltas you need may no longer be served, so the sync simply fails. Convex's export APIs are also slow. The proxy continuously polls Convex and accumulates deltas in a local SQLite buffer (default 168 hours), then serves them back quickly.
+We observed Convex's streaming-export delta window to be short, and it's outside our control: step away for a weekend and the deltas you need may no longer be served, so the sync simply fails. Convex's export APIs are also slow. The proxy continuously polls Convex and accumulates deltas in a local SQLite buffer (default 168 hours), then serves them back quickly.
 
-Snapshots are the opposite case, so the proxy just **passes them through** without storing anything. They're large, rarely requested (first sync, retention-expiry fallback, `--full`), and a slightly stale snapshot is low value — when you need one, you want the latest.
+Snapshots are the opposite case, so the proxy just **passes them through** without storing anything. They're large, rarely requested (first sync, retention-expiry fallback, `--full`), and a slightly stale snapshot is low value. When you need one, you want the latest, so we don't buffer them.
 
 Routing everything through one service keeps the model simple: the CLI talks to a single proxy with a single token, and the Convex deploy key never leaves the server.
 
@@ -160,7 +163,7 @@ Pass-through routes forward the upstream response body unchanged, preserving nan
 
 ### Proxy (environment variables)
 
-Set these where the proxy runs — Railway service variables in production, or `apps/proxy/.env.local` for local development (see [Local development](#local-development)).
+Set these where the proxy runs: Railway service variables in production, or `apps/proxy/.env.local` for local development (see [Local development](#local-development)).
 
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
@@ -185,7 +188,7 @@ Set these where the proxy runs — Railway service variables in production, or `
 
 ## Local development
 
-For running the proxy on your own machine and hacking on the code. End users following the [Quickstart](#quickstart--deploy-on-railway-in-5-minutes) don't need any of this.
+For running the proxy on your own machine and hacking on the code. End users following the [Quickstart](#quickstart-deploy-on-railway-in-5-minutes) don't need any of this.
 
 ```bash
 npm install
