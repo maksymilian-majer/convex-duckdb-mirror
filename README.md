@@ -39,6 +39,14 @@ Run it from your Convex project while logged in (`npx convex login`). Paste the 
 
 Railway provides the public URL and injects `PORT` automatically. When the service is up, note its public URL and the value of `CONVEX_DUCKDB_ACCESS_TOKEN`.
 
+Specifically, go to Settings -> Networking -> Public Networking and copy the public URL from there:
+
+<img width="743" height="299" alt="image" src="https://github.com/user-attachments/assets/9181037e-ea2b-4567-b28a-04b02da3b602" />
+
+For access token, go to Variables -> find `CONVEX_DUCKDB_ACCESS_TOKEN` and copy its value:
+
+<img width="1191" height="716" alt="image" src="https://github.com/user-attachments/assets/29142046-cb63-422b-aa1b-a3d9b6473236" />
+
 ### 2. Point the CLI at the proxy
 
 From the repository where you want the local DuckDB file:
