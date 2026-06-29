@@ -149,6 +149,22 @@ describe("applyDuckdbDeltaCollections", () => {
     ]);
   });
 
+  it("adds columns introduced by upsert deltas", async () => {
+    const dir = tempDir();
+    const duckdbPath = join(dir, "test.duckdb");
+
+    await seedDuckDbTable(duckdbPath, "tweets", [{ _id: "a", text: "old" }]);
+    await applyTestDeltas(duckdbPath, [
+      collectionEvents("tweets", [
+        deltaEvent(0, "tweets", "a", { _id: "a", text: "new", requestId: "req-123" }),
+      ]),
+    ]);
+
+    await expect(duckDbRows(duckdbPath, 'SELECT * FROM "tweets"')).resolves.toEqual([
+      { _id: "a", text: "new", requestId: "req-123" },
+    ]);
+  });
+
   it("replaces an empty `(_id VARCHAR)` stub table with the full upsert schema", async () => {
     const dir = tempDir();
     const duckdbPath = join(dir, "test.duckdb");

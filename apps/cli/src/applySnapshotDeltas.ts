@@ -43,7 +43,8 @@ export interface ApplyDuckdbDeltaCollectionsOptions {
 
 interface CollectionWorkFiles {
   idsFile: string;
-  upsertsFile: string | null;
+  upsertsFile: string;
+  hasUpserts: boolean;
 }
 
 export async function applyDuckdbDeltaCollections(
@@ -123,7 +124,7 @@ async function applyDuckDbCollection(
 
   await resetTempTables(connection);
   await createIdsTable(connection, workFiles.idsFile);
-  if (workFiles.upsertsFile) {
+  if (workFiles.hasUpserts) {
     await connection.run(
       `CREATE TEMP TABLE _upserts AS SELECT * FROM read_json_auto(${sqlString(workFiles.upsertsFile)}, maximum_object_size=${MAXIMUM_OBJECT_SIZE}, union_by_name=true)`,
     );
@@ -136,16 +137,19 @@ async function applyDuckDbCollection(
   const isEmptyTable = tableExists && beforeRowCount === 0;
   await connection.run("BEGIN TRANSACTION");
   try {
-    if ((!tableExists || isEmptyTable) && workFiles.upsertsFile) {
+    if ((!tableExists || isEmptyTable) && workFiles.hasUpserts) {
       if (isEmptyTable) {
         await connection.run(`DROP TABLE IF EXISTS ${sqlIdentifier(tableName)}`);
       }
       await connection.run(`CREATE TABLE ${sqlIdentifier(tableName)} AS SELECT * FROM _upserts`);
     } else if (tableExists) {
+      if (workFiles.hasUpserts) {
+        await prepareTargetTableForUpserts(connection, tableName);
+      }
       await connection.run(
         `DELETE FROM ${sqlIdentifier(tableName)} WHERE _id IN (SELECT _id FROM _latest_ids)`,
       );
-      if (workFiles.upsertsFile) {
+      if (workFiles.hasUpserts) {
         await connection.run(
           `INSERT INTO ${sqlIdentifier(tableName)} BY NAME SELECT * FROM _upserts`,
         );
@@ -157,7 +161,7 @@ async function applyDuckDbCollection(
     throw error;
   }
 
-  const afterTableExists = tableExists || workFiles.upsertsFile !== null;
+  const afterTableExists = tableExists || workFiles.hasUpserts;
   const collectionSummary = summary.collections[collection.collection];
   collectionSummary.beforeRowCount = beforeRowCount;
   collectionSummary.afterRowCount = afterTableExists
@@ -196,8 +200,34 @@ function writeCollectionWorkFiles(
 
   return {
     idsFile,
-    upsertsFile: upserts.length > 0 ? upsertsFile : null,
+    upsertsFile,
+    hasUpserts: upserts.length > 0,
   };
+}
+
+async function prepareTargetTableForUpserts(
+  connection: DuckDBConnection,
+  tableName: string,
+): Promise<void> {
+  const reader = await connection.runAndReadAll(`
+    SELECT source.column_name, source.data_type
+    FROM duckdb_columns() source
+    LEFT JOIN duckdb_columns() target
+      ON target.schema_name = 'main'
+     AND target.table_name = ${sqlString(tableName)}
+     AND target.column_name = source.column_name
+    WHERE source.schema_name = 'main'
+      AND source.table_name = '_upserts'
+      AND target.column_name IS NULL
+    ORDER BY source.column_index
+  `);
+
+  for (const row of reader.getRowObjects()) {
+    await connection.run(
+      `ALTER TABLE ${sqlIdentifier(tableName)}
+       ADD COLUMN ${sqlIdentifier(String(row.column_name))} ${String(row.data_type)}`,
+    );
+  }
 }
 
 async function resetTempTables(connection: DuckDBConnection): Promise<void> {
