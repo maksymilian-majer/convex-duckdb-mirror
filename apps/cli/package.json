@@ -1,6 +1,6 @@
 {
   "name": "convex-duckdb",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "CLI to sync a local DuckDB mirror of Convex data for ad-hoc analytics.",
   "license": "MIT",
   "repository": {
